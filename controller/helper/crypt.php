@@ -11,29 +11,49 @@ class Crypt {
     }
 
     public function encrypt($encrypt){
-        $encrypt = serialize($encrypt);
-        $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC), MCRYPT_DEV_URANDOM);
-        $key = pack('H*', $this->key);
-        $mac = hash_hmac('sha256', $encrypt, substr($this->key, -32));
-        $passcrypt = mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $key, $encrypt . $mac, MCRYPT_MODE_CBC, $iv);
-        $encoded = base64_encode($passcrypt) . '|' . base64_encode($iv);
+        $kunci = $this->key;
+        if(mb_strlen($kunci,'8bit') !==32){
+            throw new Exception("Needs a 256-bit key!");
+        }
+        $p_ivfnal = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+        $p_ebsfrs = base64_encode($domain);
+        $p_efirst = "Palhea Encoder First Step - ".serialize($p_ebsfrs);
+        $p_ebsscd = base64_encode($p_efirst);
+        //$p_ecrtiv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC),MCRYPT_DEV_URANDOM);
+        $p_enckey = pack('H*', $kunci);
+        $p_ehhmac = hash_hmac('sha256', $p_ebsscd, substr($kunci, -32));
+        //$p_pencry = mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $p_enckey, $p_ebsscd . $p_ehhmac, MCRYPT_MODE_CBC, $p_ecrtiv);
+        $p_pencry = openssl_encrypt($p_ebsscd . $p_ehhmac,'aes-256-cbc',$p_enckey,OPENSSL_RAW_DATA,$p_ivfnal);
+        $p_ebsscd = base64_encode($p_pencry) . '|' . base64_encode($p_ivfnal);
+        $p_esecnd = "Palhea Encoder Final Step - ".serialize($p_ebsscd);
+        $p_efinal = base64_encode($p_esecnd);
+        $encoded = $p_efinal;
         return $encoded;
     }
 
     public function decrypt($decrypt){
-        $decrypt = explode('|', $decrypt.'|');
-        $decoded = base64_decode($decrypt[0]);
-        $iv = base64_decode($decrypt[1]);
-        if(strlen($iv)!==mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC)){ return false; }
-        $key = pack('H*', $this->key);
-        $decrypted = trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $decoded, MCRYPT_MODE_CBC, $iv));
-        $mac = substr($decrypted, -64);
-        $decrypted = substr($decrypted, 0, -64);
-        $calcmac = hash_hmac('sha256', $decrypted, substr($this->key, -32));
-        if($calcmac !== $mac){
-            return false;
+        $kunci = $this->key;
+        if(mb_strlen($kunci,'8bit') !==32){
+            throw new Exception("Needs a 256-bit key!");
         }
-        $decrypted = unserialize($decrypted);
+        $p_dbsfrs = base64_decode($decrypt);
+        $p_dstrfr = str_replace('Palhea Encoder Final Step - ','',$p_dbsfrs);
+        $p_dunsrf = unserialize($p_dstrfr);
+        $p_dvaria = explode('|', $p_dunsrf.'|');
+        $p_denval = base64_decode($p_dvaria[0]);
+        $p_ivfnal = base64_decode($p_dvaria[1]);
+        if(strlen($p_ivfnal)!==openssl_cipher_iv_length('aes-256-cbc')){ throw new Exception("Kode Tidak Dapat Diterjemahkan!"); }
+        $p_enckey = pack('H*', $kunci);
+        $p_dencry = trim(openssl_decrypt($p_denval, 'aes-256-cbc',$p_enckey,OPENSSL_RAW_DATA,$p_ivfnal));
+        $p_dehmac = substr($p_dencry, -64);
+        $p_dehcry = substr($p_dencry,0,-64);
+        $p_ehhmac = hash_hmac('sha256', $p_dehcry, substr($kunci, -32));
+        if($p_dehmac !== $p_ehhmac){throw new Exception("Kode Tidak Dapat Diterjemahkan!");}
+        $p_dbsscd = base64_decode($p_dehcry);
+        $p_dstrsc = str_replace('Palhea Encoder First Step - ','',$p_dbsscd);
+        $p_dunsrf = unserialize($p_dstrsc);
+        $p_dfinal = base64_decode($p_dunsrf);
+        $decrypted = $p_dfinal;	
         return $decrypted;
     }
 
